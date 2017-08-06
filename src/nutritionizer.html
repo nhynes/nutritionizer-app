@@ -1,0 +1,327 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymer/lib/mixins/gesture-event-listeners.html">
+
+<link rel="import" href="../bower_components/app-layout/app-header/app-header.html">
+<link rel="import" href="../bower_components/app-layout/app-toolbar/app-toolbar.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../bower_components/iron-form/iron-form.html">
+<link rel="import" href="../bower_components/iron-list/iron-list.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+
+<link rel="import" href="../bower_components/neon-animation/web-animations.html">
+<link rel="import" href="../bower_components/neon-animation/animations/scale-up-animation.html">
+<link rel="import" href="../bower_components/neon-animation/animations/fade-out-animation.html">
+
+<link rel="import" href="ingredients-picker.html">
+<link rel="import" href="image-picker.html">
+<link rel="import" href="macros-chart.html">
+
+<dom-module id="my-app">
+  <template>
+    <style is="custom-style" include="iron-flex iron-flex-alignment">
+      :host {
+        --primary-color: black;
+        --secondary-color: #26a96c;
+        --font-size: 16pt;
+
+        height: 100%;
+        @apply --layout-vertical;
+        background-color: white;
+      }
+
+      .app-header {
+        color: var(--primary-color);
+      }
+
+      .app-header paper-icon-button {
+        --paper-icon-button-ink-color: white;
+      }
+
+      app-toolbar {
+        text-align: center;
+        font-size: 18pt;
+      }
+
+      .header-button {
+        color: black;
+      }
+      :host(:not([_edit-ingrs-showing])) .header-button {
+        display: none;
+      }
+
+      .row {
+        line-height: var(--font-size);
+        margin-top: 15px;
+      }
+      .row:first-of-type {
+        margin-top: 0;
+      }
+
+      .row.row-input {
+        font-size: var(--font-size);
+      }
+
+      .content {
+        @apply --layout-flex;
+        padding: 0 10vw;
+        overflow-y: auto;
+      }
+
+      iron-form {
+        height: 100%;
+        overflow-y: hidden;
+        @apply --layout-flex;
+      }
+      .form {
+        height: 100%;
+        @apply --layout-vertical;
+        overflow-y: auto;
+      }
+
+      .form .form-inputs {
+        overflow-y: auto;
+        @apply --layout-flex;
+        @apply --layout-vertical;
+      }
+
+      .form .form-actions {
+        text-align: center;
+        padding: 10px 0;
+        border-width: 1px 0 0 0;
+        border-color: grey;
+        border-style: solid;
+      }
+
+      paper-button {
+        background-color: var(--secondary-color);
+        color: white;
+        padding: 8px 17px;
+      }
+
+      image-picker {
+        margin:auto;
+      }
+      .image-picker-row {
+        text-align: center;
+        margin-bottom: 14px;
+      }
+
+      #recipeTitle {
+        width: 100%;
+        font-size: var(--font-size);
+        --paper-input-container-input: {
+          font-size: var(--font-size);
+        }
+        --paper-input-container-label: {
+          font-size: var(--font-size);
+          color: black;
+        }
+      }
+
+      .ingr-heading {
+        width: 100%;
+        max-width: 300px;
+      }
+      /*
+      .ingr-heading.invalid paper-fab {
+        background-color: var(--paper-input-container-invalid-color, var(--error-color));
+      }
+      */
+      .ingr-edit-button {
+        float: right;
+        transform: translateY(-15%);
+        background-color: var(--secondary-color);
+        /* background-color: var(--secondary-color); */
+      }
+
+      #ingrsList {
+        @apply --layout-flex;
+        margin: 0px 0 0 0;
+        overflow-x: hidden;
+        overflow-y: scroll;
+        padding: 0 10px;
+        margin-top: -5px;
+      }
+
+      .error-message {
+        display: none;
+        color: var(--paper-input-container-invalid-color, var(--error-color));
+      }
+      #ingrsList.invalid .error-message {
+        display: inline;
+      }
+
+      paper-dialog {
+        width: 90vw;
+        height: 90vw;
+        max-width: 500px;
+        max-height: 500px;
+      }
+
+      paper-dialog * {
+        margin: 0;
+        padding: 0;
+      }
+      .centered-modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      paper-spinner-lite {
+        --paper-spinner-color: var(--primary-color);
+        --paper-spinner-stroke-width: 3px;
+        width: 20%;
+        height: 20%;
+        max-width: 64;
+        max-height: 64;
+        min-width: 32px;
+        min-height: 32px;
+      }
+
+      #loadingNutritionErr {
+        max-width: 80%;
+        display: none;
+      }
+      #loadingNutritionErr.visible {
+        display: inline;
+      }
+    </style>
+
+    <header class="app-header" slot="header" condenses reveals effects="waterfall">
+      <app-toolbar>
+        <paper-icon-button class="header-button back" icon="icons:arrow-back" aria-label="Go back"
+                           on-tap="_backBtnClick"></paper-icon-button>
+        </a>
+        <div main-title>recipe2macros</div>
+        <paper-icon-button class="header-button save" icon="icons:check" aria-label="Save"
+                           on-tap="_saveBtnClick"></paper-icon-button>
+      </app-toolbar>
+    </header>
+
+    <div class="content" selected="[[_editIngrsShowing]]">
+      <iron-form id="recipeInfo">
+        <form class="form" action="/foo" method="get">
+          <div class="form-inputs">
+            <div class="row row-input">
+              <paper-input id="recipeTitle" class="row-input" name="title" label="Recipe title" required></paper-input>
+            </div>
+            <div class="row row-input image-picker-row">
+              <image-picker id="imagePicker" name="image" required></image-picker>
+            </div>
+            <div class="row row-input">
+              <div id="ingrHeading" class="ingr-heading">
+                <span>Ingredients</span>
+                <paper-fab mini icon="icons:create" title="edit-ingrs" class="ingr-edit-button" on-tap="_editIngrsClicked"></paper-fab>
+              </div>
+            </div>
+            <ul id="ingrsList" as="item">
+              <li class="error-message">Please add ingredients!</li>
+              <template is="dom-repeat"  items="[[_ingredients]]">
+                <li>[[item]]</li>
+              </template>
+            </ul>
+          </div>
+
+          <footer class="form-actions">
+            <paper-button raised class="primary-action" on-click="_nutritionize">Nutritionize!</paper-button>
+          </footer>
+        </form>
+        <br>
+      </iron-form>
+      <ingredients-picker id="ingrPicker" is-visible$=[[_editIngrsShowing]] entry-animation="slide-from-bottom-animation"></ingredients-picker>
+    </div>
+
+    <iron-ajax url='/nutritionize' id="nutritionAjax" body="[[_recipeInfoPayload]]" on-response="_showNutrition" on-error="_showNutrition" method="POST"></iron-ajax>
+    <paper-dialog id="nutritionInfoPane" with-backdrop
+                  entry-animation="scale-up-animation"
+                  exit-animation="fade-out-animation">
+      <paper-spinner-lite id="loadingNutrition" class="centered-modal-content" active></paper-spinner-lite>
+      <span class="centered-modal-content" id="loadingNutritionErr">Could not load nutrition information.</span>
+      <macros-chart macros="[[_macros]]"></macros-chart>
+    </paper-dialog>
+  </template>
+
+  <script>
+    class MyApp extends Polymer.GestureEventListeners(Polymer.Element) {
+      static get is() { return 'my-app'; }
+
+      static get properties() {
+        return {
+          _editIngrsShowing: {
+            type: Boolean,
+            value: false,
+            reflectToAttribute: true,
+          },
+          rootPath: String,
+          _ingredients: {
+            type: Array,
+            value: [],
+          },
+          _recipeInfoPayload: FormData,
+          _macros: Object,
+        };
+      }
+
+      _editIngrsClicked() {
+        this.set('_editIngrsShowing', true);
+      }
+
+      _closeIngrModal() {
+        this.set('_editIngrsShowing', false);
+      }
+
+      _backBtnClick() {
+        this.$.ingrPicker.set('selectedIngredients', this._ingredients);
+        this._closeIngrModal()
+      }
+
+      _saveBtnClick() {
+        this.set('_ingredients', this.$.ingrPicker.selectedIngredients);
+        if(!!this._ingredients.length) {
+          this.$.ingrsList.classList.remove('invalid');
+        }
+        this._closeIngrModal()
+      }
+
+      _nutritionize() {
+        const hasTitleAndImg = this.$.recipeInfo.validate();
+        const hasIngrs = !!this._ingredients.length;
+        if (!hasIngrs) {
+          this.$.ingrsList.classList.add('invalid');
+          this.$.ingrHeading.classList.add('invalid');
+        }
+        const payload = new FormData();
+        payload.append('title', this.$.recipeTitle.value);
+        payload.append('image', this.$.imagePicker.imgSrc);
+        payload.append('ingredients', this._ingredients);
+        this.set('_recipeInfoPayload', payload);
+
+        this.$.nutritionAjax.generateRequest();
+        this.$.nutritionInfoPane.open();
+        this.$.loadingNutrition.setAttribute('active', true);
+      }
+
+      _showNutrition(e) {
+        this.$.loadingNutrition.removeAttribute('active');
+        if (e.type === 'error') {
+          this.$.loadingNutritionErr.classList.add('visible');
+          return
+        } else {
+          this.$.loadingNutritionErr.classList.remove('visible');
+          console.log(e.detail);
+          // this.set('_macros', {a:5})
+        }
+      }
+    }
+
+    window.customElements.define(MyApp.is, MyApp);
+  </script>
+</dom-module>

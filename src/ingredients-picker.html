@@ -1,0 +1,268 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/polymer/lib/elements/dom-if.html">
+<link rel="import" href="../bower_components/poly-filter/poly-filter.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/paper-styles/paper-styles.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-autocomplete/paper-autocomplete.html">
+
+<link rel="import" href="../bower_components/neon-animation/web-animations.html">
+<link rel="import" href="../bower_components/neon-animation/animations/slide-from-bottom-animation.html">
+<link rel="import" href="../bower_components/neon-animation/animations/slide-down-animation.html">
+
+<dom-module id="ingredients-picker">
+  <template>
+    <style>
+    :host {
+      --font-size: 17pt;
+      --li-height: 40px;
+
+      height: 100%;
+      @apply --layout-vertical;
+      position: relative;
+      z-index: -1;
+      top: -100%;
+      background-color: white;
+    }
+    :host(.visible) {
+      z-index: 100;
+    }
+
+    paper-autocomplete {
+      --font-size: 17pt;
+        font-size: var(--font-size);
+        --paper-input-container-input: {
+          font-size: var(--font-size);
+        }
+        --paper-input-container-label: {
+          font-size: var(--font-size);
+          color: black;
+        }
+    }
+
+    #selectedIngrs {
+    }
+
+    paper-item {
+      --paper-item-selected: {
+        font-weight: initial;
+      }
+      --paper-item-focused-before: {
+        background-color: transparent;
+      };
+      --paper-item-min-height: 40px;
+      padding: 0;
+    }
+    paper-item.iron-selected {
+      background-color: #ddd;
+    }
+    paper-item[focused] {
+      fort-weight: initial;
+    }
+    .picker {
+      @apply --layout-flex;
+      overflow-y: auto;
+    }
+    footer:not([_show-footer]) {
+      display: none;
+    }
+    footer {
+      padding: 10px 0;
+      text-align: center;
+    }
+    .destructive-action {
+      color: red;
+    }
+    </style>
+
+    <iron-ajax auto url="../static/simplified_ingredients.json"
+                    last-response="{{_ingredients}}"></iron-ajax>
+    <iron-ajax auto url="../static/pl2sg.json" last-response="{{_pl2sg}}"></iron-ajax>
+
+    <div class="picker">
+      <paper-autocomplete id="search"
+                          on-autocomplete-focus="_onAutocompleteFocus"
+                          on-autocomplete-selected="_onAutocompleteSelect"
+                          label="Add an ingredient"
+                          always-float-label
+                          source="[[_preproIngredients]]"></paper-autocomplete>
+      <paper-listbox id="selectedIngrs"
+                     class="ingredient-list"
+                     multi
+                     on-selected-items-changed="_onIngrSelectionChanged">
+        <template is="dom-repeat" items="[[selectedIngredients]]">
+          <paper-item data-ingr$="[[item]]">[[item]]</paper-item>
+        </template>
+      </paper-listbox>
+    </div>
+    <footer _show-footer$="[[_showFooter]]">
+      <paper-button noink on-tap="_deleteIngredients" class="destructive-action">
+        Remove Selected
+      </paper-button>
+    </footer>
+  </template>
+
+  <script>
+    class IngredientsPicker extends Polymer.mixinBehaviors([Polymer.NeonAnimationRunnerBehavior], Polymer.Element) {
+      static get is() { return 'ingredients-picker'; }
+
+      static get properties() {
+        return {
+          _ingredients: {
+            type: Array,
+            observer: '_loadIngredients',
+          },
+          _preproIngredients: Array,
+          _pl2sg: Array,
+          selectedIngredients: {
+            type: Array,
+            value: [],
+          },
+          _showFooter: {
+            type: Boolean,
+            value: false,
+          },
+          isVisible: {
+            type: Boolean,
+            observer: '_visibilityChanged',
+          },
+          animationConfig: {
+            value: function() {
+              return {
+                entry: {
+                  name: 'slide-from-bottom-animation',
+                  node: this,
+                },
+                exit: {
+                  name: 'slide-down-animation',
+                  node: this
+                }
+              }
+            }
+          }
+        }
+      }
+
+      _canonicalizeIngr(ingr) {
+        return ingr.toLowerCase()
+          .replace(/(?!%)\W+/g, ' ')
+          .replace(/s$/g, '');
+      }
+
+      _loadIngredients(ingrs) {
+        this.set('_preproIngredients', this._ingredients.map((ingr) => {
+          const ingrText = ingr.replace(/ - /g, '-');
+          const ingrVal = this._canonicalizeIngr(ingr);
+          return {
+            text: ingrText,
+            value: ingrVal,
+          }
+        }))
+        this._tokMatches = [this._preproIngredients];
+      }
+
+      _searchFn(needle, haystack) {
+        return needle.test(haystack.value);
+      }
+
+      _queryFn(ingrs, query) {
+        const trimmedQuery = query.trim();
+
+        if (!query.endsWith(' ') && trimmedQuery.length < 3) {
+          this._prevQuery = query;
+          this._tokMatches = [this._preproIngredients];
+          return [];
+        }
+
+        const canonQuery = this._canonicalizeIngr(trimmedQuery);
+
+        if (trimmedQuery === this._prevQuery && trimmedQuery.length >= 3) {
+          return this._tokMatches[this._tokMatches.length - 1];
+        }
+
+        const queryToks = canonQuery.split(' ');
+        this._tokMatches = this._tokMatches.slice(0, queryToks.length + 1)
+        if (this._tokMatches.length <= queryToks.length) {
+          this._tokMatches.push(this._tokMatches[this._tokMatches.length - 1])
+        }
+
+        let searchTarget;
+        const increasedSpecificity = query.length > this._prevQuery.length;
+        if (increasedSpecificity) {
+          searchTarget = this._tokMatches[queryToks.length];
+        } else {
+          searchTarget = this._tokMatches[queryToks.length - 1];
+        }
+
+        const queryTok = queryToks[queryToks.length - 1];
+        const sgTok = this._pl2sg[queryTok];
+        if (sgTok) {
+          queryToks[queryToks.length - 1] = sgTok + '$';
+        }
+        const queryRe = new RegExp(queryToks.join('( \\w+)? '));
+        const matches = searchTarget.filter(this._searchFn.bind(null, queryRe));
+        if (increasedSpecificity) {
+          this._tokMatches[queryToks.length] = matches;
+        }
+        this._prevQuery = query;
+        return matches;
+      }
+
+      _onAutocompleteFocus() {
+        this.$.selectedIngrs.set('selectedValues', []);
+      }
+
+      _onAutocompleteSelect(e) {
+        this.set('selectedIngredients',
+            [e.detail.text].concat(this.selectedIngredients).sort())
+        setTimeout(() => { this.$.search.clear() }, 0);
+      }
+
+      ready() {
+        super.ready();
+        this.$.search.queryFn = this._queryFn.bind(this)
+        this._prevQuery = '';
+        this.addEventListener('neon-animation-finish', this._onNeonAnimationFinish);
+      }
+
+      _onIngrSelectionChanged(e) {
+        const selItems = e.detail.value;
+        this.set('_showFooter', selItems.length > 0);
+      }
+
+      _deleteIngredients(e) {
+        const deleteIngrs = new Set(this.$.selectedIngrs.selectedItems.map(el => {
+          return el.getAttribute('data-ingr');
+        }))
+        this.set('selectedIngredients', this.selectedIngredients.filter(ingr => {
+          return !deleteIngrs.has(ingr);
+        }));
+        this.$.selectedIngrs.set('selectedValues', []);
+      }
+
+      _visibilityChanged() {
+        this.$.selectedIngrs.set('selectedValues', []);
+        if (this.isVisible) {
+          console.log(this)
+          this.classList.add('visible');
+          this.playAnimation('entry');
+        } else {
+          this.playAnimation('exit');
+        }
+      }
+
+      _onNeonAnimationFinish() {
+        if (!this.isVisible) {
+          this.classList.remove('visible');
+        }
+      }
+    }
+
+    window.customElements.define(IngredientsPicker.is, IngredientsPicker);
+  </script>
+</dom-module>

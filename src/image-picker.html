@@ -1,0 +1,195 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymer/lib/mixins/gesture-event-listeners.html">
+
+
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-styles/paper-styles.html">
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../bower_components/iron-icons/image-icons.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout.html">
+
+<dom-module id="image-picker">
+  <template>
+    <style>
+      :host {
+        display: block;
+        min-width: 150px;
+        min-height: 150px;
+        max-width: 224px;
+        max-height: 224px;
+        width: 50vw;
+        height: 50vw;
+        position: relative;
+        cursor: pointer;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      iron-pages {
+        width: 100%;
+        height: 100%;
+      }
+
+      .picker-action {
+        border-color: grey;
+        border-width: 2px;
+        border-radius: 3px;
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+      #pickerButton {
+        border-style: dashed;
+        background-color: #fff;
+      }
+      #pickerButton.invalid {
+        color: var(--paper-input-container-invalid-color, var(--error-color));
+        border-color: var(--paper-input-container-invalid-color, var(--error-color));
+      }
+      .button.inner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        text-align: center;
+        font-size: 1.5em;
+      }
+      .button.inner iron-icon {
+        width: 35px;
+        height: 35px;
+        margin: 8px;
+      }
+
+      #imagePreview {
+        border-style: solid;
+        width: 100%;
+        height: 100%;
+      }
+
+      #imagePreview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      button::-moz-focus-inner,
+      input::-moz-focus-inner {
+        border: 0;
+        padding: 0;
+      }
+
+      .button-text {
+        display: block;
+        font-family: var(--font-family);
+      }
+    </style>
+
+    <iron-pages class="picker-container" selected="[[_showUserAction]]"
+                attr-for-selected="user-action" on-tap="_pickerClick">
+      <button id="pickerButton" user-action="upload" class="picker-action">
+        <div class="button inner">
+          <iron-icon class="icon-button" icon="image:add-a-photo"></iron-icon>
+          <span class="button-text">Add an image</span>
+        </div>
+      </button>
+      <div id="imagePreview" user-action="preview" class="picker-action">
+        <img src="[[imgSrc]]">
+      </div>
+    </iron-pages>
+    <input type="file" id="fileInput" on-change="_onFileInputChange" hidden accept="image/*" capture="camera">
+  </template>
+
+  <script>
+    class ImagePicker extends Polymer.GestureEventListeners(Polymer.Element) {
+      static get is() { return 'image-picker'; }
+
+      constructor() {
+        super()
+        this._canvas = document.createElement('canvas')
+      }
+
+      static get properties() {
+        return {
+          _showUserAction: {
+            type: String,
+            value: 'upload',
+          },
+          imgSrc: String,
+        }
+      }
+
+      _prepImg(src, cb) {
+        const IMG_SIZE = 320;
+
+        const img = new Image();
+        const ctx = this._canvas.getContext('2d')
+        img.onload = () => {
+          const {width, height} = img;
+          const aspect = width / height;
+
+          let dw, dh, dx, dy;
+          if (width > height) {
+            dh = IMG_SIZE;
+            dw = dh * aspect;
+            dx = -(dw - IMG_SIZE);
+            dy = 0;
+          } else {
+            dw = IMG_SIZE;
+            dh = dw / aspect;
+            dx = 0;
+            dy = -(dh - IMG_SIZE) / 2;
+          }
+
+          this._canvas.width = this._canvas.height = IMG_SIZE;
+          const ctx = this._canvas.getContext('2d');
+          ctx.fillStyle = 'white';
+          ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
+          ctx.drawImage(img, dx, dy, dw, dh);
+
+          const imBuf = ctx.getImageData(0, 0, IMG_SIZE, IMG_SIZE).data.buffer;
+          const imBlob = new Blob([imBuf], { type: 'image/png' });
+
+          cb(imBlob);
+        }
+      }
+
+      _pickerClick() {
+        this.$.fileInput.click();
+      }
+
+      _onFileInputChange(e) {
+        const imgFile = e.target.files[0];
+        if (!imgFile) {
+          return
+        }
+        this.$.pickerButton.classList.remove('invalid');
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.set('imgSrc', e.target.result)
+          this.set('_showUserAction', 'preview');
+        }
+        reader.readAsDataURL(e.target.files[0])
+      }
+
+      _getDisplay(value, whenValue) {
+        return value === whenValue ? 'block' : 'none';
+      }
+
+      validate() {
+        const hasImg = !!this.imgSrc;
+        if (!hasImg) {
+            this.$.pickerButton.classList.add('invalid');
+        }
+        return hasImg;
+      }
+    }
+
+    window.customElements.define(ImagePicker.is, ImagePicker);
+  </script>
+</dom-module>
+

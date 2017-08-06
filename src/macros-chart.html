@@ -1,0 +1,115 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymer/lib/mixins/gesture-event-listeners.html">
+
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-styles/paper-styles.html">
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../bower_components/iron-icons/image-icons.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/google-chart/google-chart.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout.html">
+
+<script src="../bower_components/highcharts/highcharts.js"></script>
+
+<dom-module id="macros-chart">
+  <template>
+    <style>
+      :host {
+        display: none;
+        width: 90vw;
+        height: 90vw;
+      }
+      :host(.visible) {
+        display: block;
+      }
+      #chart {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+
+    <!-- <google&#45;chart -->
+    <!--     type='pie' -->
+    <!--       options='{"title": "Distribution of days in 2001Q1"}' -->
+    <!--         cols='[{"label":"Month", "type":"string"}, {"label":"Days", "type":"number"}]' -->
+    <!--           rows='[["Jan", 31],["Feb", 28],["Mar", 31]]'> -->
+    <!-- </google&#45;chart> -->
+    <div id="chart"></div>
+  </template>
+
+  <script>
+    class MacrosChart extends Polymer.GestureEventListeners(Polymer.Element) {
+      static get is() { return 'macros-chart'; }
+
+      static get properties() {
+        return {
+          macros: {
+            type: Object,
+            observer: '_macrosChanged',
+          }
+        }
+      }
+
+      _renderChart() {
+        const chart = Highcharts.chart({
+          chart: {
+            plotBackgroundColor: null,
+            plotBorderWidth: null,
+            plotShadow: false,
+            type: 'pie',
+            renderTo: this.$.chart,
+          },
+          title: {
+            text: '',
+            floating: true,
+          },
+          tooltip: {
+            pointFormat: '<b>{point.percentage:.1f}%</b>'
+          },
+          plotOptions: {
+            pie: {
+              allowPointSelect: false,
+              cursor: 'pointer',
+              dataLabels: {
+                enabled: false,
+              },
+              showInLegend: true
+            }
+          },
+          credits: { enabled: false },
+          series: [{
+            name: 'macros',
+            colorByPoint: true,
+            data: [{
+              name: 'Carbs',
+              y: 50.00
+            }, {
+              name: 'Fat',
+              y: 25.00,
+            }, {
+              name: 'Protein',
+              y: 25.00
+            }]
+          }]
+        });
+      }
+
+      _macrosChanged() {
+        this.classList.add('visible');
+        setTimeout(this._renderChart.bind(this), 300);
+        // container.style.width = '300px';
+        // container.style.height = '300px';
+        // const chartContainer = this.$.chart;
+        // while (chartContainer.firstChild) {
+        //     chartContainer.removeChild(chartContainer.firstChild);
+        // }
+        // this.$.chart.append(container);
+        // chartContainer.append(chart);
+      }
+    }
+
+    window.customElements.define(MacrosChart.is, MacrosChart);
+  </script>
+</dom-module>
+
