@@ -301,7 +301,7 @@
         const payload = new FormData();
         payload.append('title', this.$.recipeTitle.value);
         payload.append('image', this.$.imagePicker.imgSrc);
-        payload.append('ingredients', this._ingredients);
+        payload.append('ingredients', JSON.stringify(this._ingredients));
         this.set('_recipeInfoPayload', payload);
 
         this.$.nutritionAjax.generateRequest();
