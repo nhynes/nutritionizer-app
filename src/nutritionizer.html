@@ -224,8 +224,11 @@
         @apply --layout-flex;
         margin: 0;
       }
-      #helpDialog paper-dialog-scrollable {
+      .dialog-scroller {
         margin-top: 0;
+        --paper-dialog-scrollable: {
+          max-width: 100% !important;
+        }
       }
       .help-close {
         position: relative;
@@ -319,19 +322,27 @@
                            icon="icons:close" aria-label="Close"
                            on-tap="_helpCloseBtnClick"></paper-icon-button>
       </header>
-      <paper-dialog-scrollable>
-      <i>recipe2nutrition</i> converts a list of ingredients to a ratio of macronutrients (carbs, fat, and protein).
-      It uses the title and an image of the dish to fine-tune the ratios.
+      <paper-dialog-scrollable class="dialog-scroller">
+      <i>recipe2nutrition</i> predicts macronutrient composition from a (complete) list of ingredients.
+      It uses an image and the title to fine-tune the ingredient ratios.
+      The backend uses several machine learning models, including one based on <a href="http://im2recipe.csail.mit.edu/"><i>im2recipe</i></a>.
       <h2>Tips</h2>
       <ul class="tips-list">
-        <li>If you don't enter an ingredient, the app doesn't know that it exists. It is critical that you get all of the main ingredients (oil is important; seasonings, not so much).</li>
-        <li>The image will ideally will depict the dish in isolation. Otherwise, just treat it as though you're trying to allow a person to identify what's in the dish.</li>
+        <li>
+          <b>You must enter all main ingredients.</b><br>
+          This version does not yet infer ingredients from the title/image, so if you leave out e.g., oil, the prediction will not be valid!
+          Seasonings are less important.
+        </li>
+        <li>
+          The image will ideally contain just the dish in question.
+          Otherwise, just take it as if you're trying to allow a person to identify what's in the dish.
+        </li>
       </ul>
       <h2>A humble reminder</h2>
       Remember that there is no such thing as an unhealthy food.
       There are only unhealthy <i>diets</i>.
-      Just because this (or any other) app predicts a certain nutritional composition does not mean that you should not enjoy a dish.
-      Instead, it might mean that you should simply adjust your intake so that you meet your overall nutritional goals.
+      Just because this app predicts a certain macronutrient composition does not mean that you should not enjoy a dish.
+      Instead, it might mean that you should simply adjust your intake to meet your overall nutritional goals.
 
       <h2>Future work</h2>
       A soon-to-exist version will estimate the absolute quantity of macros and energy if you provide it with the quantity of one of the ingredients.
