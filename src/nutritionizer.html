@@ -195,13 +195,15 @@
       }
     </style>
 
-    <header class="app-header" slot="header" condenses reveals effects="waterfall">
+    <header class="app-header" slot="header">
       <app-toolbar>
-        <paper-icon-button class="header-button back" icon="icons:arrow-back" aria-label="Go back"
+        <paper-icon-button class="header-button back"
+                           icon="icons:arrow-back" aria-label="Go back"
                            on-tap="_backBtnClick"></paper-icon-button>
         </a>
         <div main-title>recipe2macros</div>
-        <paper-icon-button class="header-button save" icon="icons:check" aria-label="Save"
+        <paper-icon-button class="header-button save"
+                           icon="icons:check" aria-label="Save"
                            on-tap="_saveBtnClick"></paper-icon-button>
       </app-toolbar>
     </header>
@@ -239,13 +241,19 @@
       <ingredients-picker id="ingrPicker" is-visible$=[[_editIngrsShowing]] entry-animation="slide-from-bottom-animation"></ingredients-picker>
     </div>
 
-    <iron-ajax url='/nutritionize' id="nutritionAjax" body="[[_recipeInfoPayload]]" on-response="_showNutrition" on-error="_showNutrition" method="POST"></iron-ajax>
+    <iron-ajax url="/nutritionize"
+               id="nutritionAjax"
+               body="[[_recipeInfoPayload]]"
+               on-response="_showNutrition"
+               on-error="_showNutrition"
+               method="POST"></iron-ajax>
+
     <paper-dialog id="nutritionInfoPane" with-backdrop
                   entry-animation="scale-up-animation"
                   exit-animation="fade-out-animation">
       <paper-spinner-lite id="loadingNutrition" class="centered-modal-content" active></paper-spinner-lite>
       <span class="centered-modal-content" id="loadingNutritionErr">Could not load nutrition information.</span>
-      <macros-chart macros="[[_macros]]"></macros-chart>
+      <macros-chart id="macrosChart" macros="[[_macros]]"></macros-chart>
     </paper-dialog>
   </template>
 
@@ -267,6 +275,10 @@
           },
           _recipeInfoPayload: FormData,
           _macros: Object,
+          _prevIngredients: {
+            type: Array,
+            value: [],
+          },
         };
       }
 
@@ -291,6 +303,10 @@
         this._closeIngrModal()
       }
 
+      _arraysEqual(a1, a2) {
+        return a1.length === a2.length && a1.every((v,i) => v === a2[i]);
+      }
+
       _nutritionize() {
         const hasTitleAndImg = this.$.recipeInfo.validate();
         const hasIngrs = !!this._ingredients.length;
@@ -304,20 +320,26 @@
         payload.append('ingredients', JSON.stringify(this._ingredients));
         this.set('_recipeInfoPayload', payload);
 
+        if (this._arraysEqual(this._ingredients, this._prevIngredients)) {
+          this.$.nutritionInfoPane.open();
+          return;
+        }
         this.$.nutritionAjax.generateRequest();
+        this.$.loadingNutritionErr.classList.remove('visible');
+        this.$.macrosChart.clear();
+        this.$.loadingNutritionErr.classList.remove('visible');
         this.$.nutritionInfoPane.open();
         this.$.loadingNutrition.setAttribute('active', true);
+        this._prevIngredients = this._ingredients;
       }
 
       _showNutrition(e) {
         this.$.loadingNutrition.removeAttribute('active');
         if (e.type === 'error') {
           this.$.loadingNutritionErr.classList.add('visible');
-          return
         } else {
           this.$.loadingNutritionErr.classList.remove('visible');
-          console.log(e.detail);
-          // this.set('_macros', {a:5})
+          this.set('_macros', e.detail.response);
         }
       }
     }

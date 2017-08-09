@@ -6,7 +6,6 @@
 <link rel="import" href="../bower_components/paper-fab/paper-fab.html">
 <link rel="import" href="../bower_components/iron-icons/image-icons.html">
 <link rel="import" href="../bower_components/iron-pages/iron-pages.html">
-<link rel="import" href="../bower_components/google-chart/google-chart.html">
 <link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout-classes.html">
 <link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout.html">
 
@@ -29,12 +28,6 @@
       }
     </style>
 
-    <!-- <google&#45;chart -->
-    <!--     type='pie' -->
-    <!--       options='{"title": "Distribution of days in 2001Q1"}' -->
-    <!--         cols='[{"label":"Month", "type":"string"}, {"label":"Days", "type":"number"}]' -->
-    <!--           rows='[["Jan", 31],["Feb", 28],["Mar", 31]]'> -->
-    <!-- </google&#45;chart> -->
     <div id="chart"></div>
   </template>
 
@@ -52,6 +45,12 @@
       }
 
       _renderChart() {
+        const data = Object.keys(this.macros).map(k => {
+          return {
+            name: k.charAt(0).toUpperCase() + k.slice(1),
+            y: this.macros[k] * 100,
+          }
+        });
         const chart = Highcharts.chart({
           chart: {
             plotBackgroundColor: null,
@@ -81,31 +80,20 @@
           series: [{
             name: 'macros',
             colorByPoint: true,
-            data: [{
-              name: 'Carbs',
-              y: 50.00
-            }, {
-              name: 'Fat',
-              y: 25.00,
-            }, {
-              name: 'Protein',
-              y: 25.00
-            }]
+            data: data,
           }]
         });
+      }
+
+      clear() {
+        const range = document.createRange();
+        range.selectNodeContents(this.$.chart);
+        range.deleteContents();
       }
 
       _macrosChanged() {
         this.classList.add('visible');
         setTimeout(this._renderChart.bind(this), 300);
-        // container.style.width = '300px';
-        // container.style.height = '300px';
-        // const chartContainer = this.$.chart;
-        // while (chartContainer.firstChild) {
-        //     chartContainer.removeChild(chartContainer.firstChild);
-        // }
-        // this.$.chart.append(container);
-        // chartContainer.append(chart);
       }
     }
 

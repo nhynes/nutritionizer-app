@@ -80,9 +80,8 @@
     }
     </style>
 
-    <iron-ajax auto url="../static/simplified_ingredients.json"
+    <iron-ajax auto url="../static/ingredients.json"
                     last-response="{{_ingredients}}"></iron-ajax>
-    <iron-ajax auto url="../static/pl2sg.json" last-response="{{_pl2sg}}"></iron-ajax>
 
     <div class="picker">
       <paper-autocomplete id="search"
@@ -118,7 +117,6 @@
             observer: '_loadIngredients',
           },
           _preproIngredients: Array,
-          _pl2sg: Array,
           selectedIngredients: {
             type: Array,
             value: [],
@@ -200,10 +198,6 @@
         }
 
         const queryTok = queryToks[queryToks.length - 1];
-        const sgTok = this._pl2sg[queryTok];
-        if (sgTok) {
-          queryToks[queryToks.length - 1] = sgTok + '$';
-        }
         const queryRe = new RegExp(queryToks.join('( \\w+)? '));
         const matches = searchTarget.filter(this._searchFn.bind(null, queryRe));
         if (increasedSpecificity) {
@@ -248,7 +242,6 @@
       _visibilityChanged() {
         this.$.selectedIngrs.set('selectedValues', []);
         if (this.isVisible) {
-          console.log(this)
           this.classList.add('visible');
           this.playAnimation('entry');
         } else {
