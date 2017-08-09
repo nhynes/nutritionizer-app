@@ -11,6 +11,7 @@
 <link rel="import" href="../bower_components/iron-pages/iron-pages.html">
 <link rel="import" href="../bower_components/paper-button/paper-button.html">
 <link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../bower_components/paper-dialog-scrollable/paper-dialog-scrollable.html">
 <link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
 <link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
 <link rel="import" href="../bower_components/paper-input/paper-input.html">
@@ -49,10 +50,28 @@
         font-size: 18pt;
       }
 
+      h1 {
+        font-weight: inherit;
+        font-size: 18pt;
+      }
+      h2 {
+        font-weight: inherit;
+        font-size: 16pt;
+      }
+
       .header-button {
         color: black;
       }
-      :host(:not([_edit-ingrs-showing])) .header-button {
+      .header-button.help {
+        margin-left: -40px;
+      }
+      .editor-control {
+        display: none;
+      }
+      :host([_edit-ingrs-showing]) .editor-control {
+        display: unset;
+      }
+      :host([_edit-ingrs-showing]) .header-button.help {
         display: none;
       }
 
@@ -158,14 +177,14 @@
         display: inline;
       }
 
-      paper-dialog {
+      #nutritionInfoDialog {
         width: 90vw;
         height: 90vw;
         max-width: 500px;
         max-height: 500px;
       }
 
-      paper-dialog * {
+      #nutritionInfoDialog * {
         margin: 0;
         padding: 0;
       }
@@ -193,18 +212,53 @@
       #loadingNutritionErr.visible {
         display: inline;
       }
+
+      #helpDialog {
+        width: 90vw;
+        max-width: 500px;
+      }
+      #helpDialog header {
+        @apply --layout-horizontal;
+      }
+      #helpDialog header h1 {
+        @apply --layout-flex;
+        margin: 0;
+      }
+      #helpDialog paper-dialog-scrollable {
+        margin-top: 0;
+      }
+      .help-close {
+        position: relative;
+        top: -10px;
+        right: -10px;
+      }
+
+      .tips-list {
+        list-style-type: none;
+        padding: 0;
+      }
+      .tips-list li:first-of-type {
+        margin-top: 0;
+      }
+      .tips-list li {
+        margin-top: 10px;
+      }
     </style>
 
     <header class="app-header" slot="header">
       <app-toolbar>
-        <paper-icon-button class="header-button back"
+        <paper-icon-button class="header-button editor-control back"
                            icon="icons:arrow-back" aria-label="Go back"
                            on-tap="_backBtnClick"></paper-icon-button>
         </a>
         <div main-title>recipe2macros</div>
-        <paper-icon-button class="header-button save"
+        <paper-icon-button class="header-button editor-control save"
                            icon="icons:check" aria-label="Save"
                            on-tap="_saveBtnClick"></paper-icon-button>
+        <paper-icon-button class="header-button help"
+                           icon="icons:help-outline" aria-label="Help"
+                           on-tap="_helpBtnClick"></paper-icon-button>
+
       </app-toolbar>
     </header>
 
@@ -248,12 +302,42 @@
                on-error="_showNutrition"
                method="POST"></iron-ajax>
 
-    <paper-dialog id="nutritionInfoPane" with-backdrop
+    <paper-dialog id="nutritionInfoDialog" with-backdrop
                   entry-animation="scale-up-animation"
                   exit-animation="fade-out-animation">
       <paper-spinner-lite id="loadingNutrition" class="centered-modal-content" active></paper-spinner-lite>
       <span class="centered-modal-content" id="loadingNutritionErr">Could not load nutrition information.</span>
       <macros-chart id="macrosChart" macros="[[_macros]]"></macros-chart>
+    </paper-dialog>
+
+    <paper-dialog id="helpDialog" with-backdrop
+                  entry-animation="scale-up-animation"
+                  exit-animation="fade-out-animation">
+      <header class="help-header">
+        <h1>About the app</h1>
+        <paper-icon-button class="help-close"
+                           icon="icons:close" aria-label="Close"
+                           on-tap="_helpCloseBtnClick"></paper-icon-button>
+      </header>
+      <paper-dialog-scrollable>
+      <i>recipe2nutrition</i> converts a list of ingredients to a ratio of macronutrients (carbs, fat, and protein).
+      It uses the title and an image of the dish to fine-tune the ratios.
+      <h2>Tips</h2>
+      <ul class="tips-list">
+        <li>If you don't enter an ingredient, the app doesn't know that it exists. It is critical that you get all of the main ingredients (oil is important; seasonings, not so much).</li>
+        <li>The image will ideally will depict the dish in isolation. Otherwise, just treat it as though you're trying to allow a person to identify what's in the dish.</li>
+      </ul>
+      <h2>A humble reminder</h2>
+      Remember that there is no such thing as an unhealthy food.
+      There are only unhealthy <i>diets</i>.
+      Just because this (or any other) app predicts a certain nutritional composition does not mean that you should not enjoy a dish.
+      Instead, it might mean that you should simply adjust your intake so that you meet your overall nutritional goals.
+
+      <h2>Future work</h2>
+      A soon-to-exist version will estimate the absolute quantity of macros and energy if you provide it with the quantity of one of the ingredients.
+      <br><br>
+      A later-to-exist version will auto-detect ingredients from the image.
+      </paper-dialog-scrollable>
     </paper-dialog>
   </template>
 
@@ -264,6 +348,11 @@
       static get properties() {
         return {
           _editIngrsShowing: {
+            type: Boolean,
+            value: false,
+            reflectToAttribute: true,
+          },
+          _helpDialogShowing: {
             type: Boolean,
             value: false,
             reflectToAttribute: true,
@@ -291,8 +380,12 @@
       }
 
       _backBtnClick() {
-        this.$.ingrPicker.set('selectedIngredients', this._ingredients);
-        this._closeIngrModal()
+        if (this._editIngrsShowing) {
+          this.$.ingrPicker.set('selectedIngredients', this._ingredients);
+          this._closeIngrModal();
+        } else if (this._helpDialogShowing) {
+          this._closeHelpDialog();
+        }
       }
 
       _saveBtnClick() {
@@ -314,6 +407,11 @@
           this.$.ingrsList.classList.add('invalid');
           this.$.ingrHeading.classList.add('invalid');
         }
+
+        if (!hasTitleAndImg || !hasIngrs) {
+          return;
+        }
+
         const payload = new FormData();
         payload.append('title', this.$.recipeTitle.value);
         payload.append('image', this.$.imagePicker.imgSrc);
@@ -321,14 +419,14 @@
         this.set('_recipeInfoPayload', payload);
 
         if (this._arraysEqual(this._ingredients, this._prevIngredients)) {
-          this.$.nutritionInfoPane.open();
+          this.$.nutritionInfoDialog.open();
           return;
         }
         this.$.nutritionAjax.generateRequest();
         this.$.loadingNutritionErr.classList.remove('visible');
         this.$.macrosChart.clear();
         this.$.loadingNutritionErr.classList.remove('visible');
-        this.$.nutritionInfoPane.open();
+        this.$.nutritionInfoDialog.open();
         this.$.loadingNutrition.setAttribute('active', true);
         this._prevIngredients = this._ingredients;
       }
@@ -341,6 +439,14 @@
           this.$.loadingNutritionErr.classList.remove('visible');
           this.set('_macros', e.detail.response);
         }
+      }
+
+      _helpBtnClick() {
+        this.$.helpDialog.open();
+      }
+
+      _helpCloseBtnClick() {
+        this.$.helpDialog.close();
       }
     }
 

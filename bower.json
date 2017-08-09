@@ -22,7 +22,8 @@
     "paper-listbox": "^2.0.0",
     "neon-animation": "^2.0.1",
     "web-animations-js": "^2.3.1",
-    "highcharts": "^5.0.14"
+    "highcharts": "^5.0.14",
+    "paper-dialog-scrollable": "^2.1.0"
   },
   "resolutions": {
     "polymer": "^2.0.0",
